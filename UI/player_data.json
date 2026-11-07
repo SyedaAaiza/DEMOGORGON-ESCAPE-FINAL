@@ -1,4 +1,7 @@
 {
-    "selected_character": "MAX",
-    "player_name": "MAX"
+    "selected_character": "eleven",
+    "player_name": "ABC",
+    "sound_volume": 5,
+    "music_muted": true,
+    "sound_muted": false
 }

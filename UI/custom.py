@@ -76,25 +76,56 @@ class CustomizationScreen:
 
         self.game_state = "SELECT"
         self.chosen_character = self.characters[self.selected_index]["name"]
-        self.player_name = self.chosen_character
+
+        # Load existing player name from JSON if available, else default to "Player1"
+        self.player_name = self.load_saved_player_name()
 
         self.name_btn_rect = pygame.Rect(self.WIDTH // 2 - 160, self.HEIGHT - 150, 320, 50)
         self.save_btn_rect = pygame.Rect(0, 0, 0, 0)
         self.back_icon_rect = pygame.Rect(40, 40, 50, 50)
 
+    def load_saved_player_name(self):
+        """Read saved player name from JSON without resetting it to character name."""
+        json_paths = [
+            os.path.join(self.current_dir, "player_data.json"),
+            os.path.join(self.parent_dir, "player_data.json")
+        ]
+        for path in json_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        saved_name = data.get("player_name") or data.get("username")
+                        if saved_name and str(saved_name).strip():
+                            return str(saved_name).strip()
+                except Exception as e:
+                    print(f"Error reading saved player name: {e}")
+        return "Player1"
+
     def save_to_json(self, char, name):
-        data = {"selected_character": char, "player_name": name}
-        json_path = os.path.join(self.current_dir, "player_data.json")
-        try:
-            with open(json_path, "w") as f:
-                json.dump(data, f, indent=4)
-            print(f"Saved to {json_path}: {data}")
-        except Exception as e:
-            print(f"Error saving JSON: {e}")
+        """Save selected character and player name to JSON at both root and UI levels."""
+        data = {
+            "selected_character": str(char).lower().strip(),
+            "player_name": name.strip() if name.strip() != "" else "Player1"
+        }
+
+        # Save to both UI folder and root project folder for safety
+        paths = [
+            os.path.join(self.current_dir, "player_data.json"),
+            os.path.join(self.parent_dir, "player_data.json")
+        ]
+
+        for json_path in paths:
+            try:
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4)
+                print(f"Saved to {json_path}: {data}")
+            except Exception as e:
+                print(f"Error saving JSON to {json_path}: {e}")
 
     def launch_game(self):
         if self.player_name.strip() == "":
-            self.player_name = self.chosen_character
+            self.player_name = "Player1"
         self.save_to_json(self.chosen_character, self.player_name)
 
         print(f"Launching main.py with selected character: {self.chosen_character}")
@@ -116,7 +147,6 @@ class CustomizationScreen:
                         if self.game_state == "SELECT":
                             if self.name_btn_rect.collidepoint(event.pos):
                                 self.chosen_character = self.characters[self.selected_index]["name"]
-                                self.player_name = self.chosen_character
                                 self.game_state = "ENTER_NAME"
                             elif self.back_icon_rect.collidepoint(event.pos):
                                 print("Returning to Main Menu...")
@@ -139,7 +169,6 @@ class CustomizationScreen:
                             self.selected_index = (self.selected_index + 1) % len(self.characters)
                         elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                             self.chosen_character = self.characters[self.selected_index]["name"]
-                            self.player_name = self.chosen_character
                             self.game_state = "ENTER_NAME"
                     elif self.game_state == "ENTER_NAME":
                         if event.key == pygame.K_RETURN:
@@ -149,8 +178,6 @@ class CustomizationScreen:
                             self.player_name = self.player_name[:-1]
                         else:
                             if len(self.player_name) < 15 and event.unicode.isprintable():
-                                if self.player_name == self.chosen_character:
-                                    self.player_name = ""
                                 self.player_name += event.unicode
 
             if self.bg_image:
@@ -173,7 +200,7 @@ class CustomizationScreen:
                 pygame.draw.rect(self.screen, self.BORDER_COLOR, self.back_icon_rect, 2, border_radius=10)
                 arrow_surf = self.font_name.render("←", True, self.TEXT_COLOR)
                 self.screen.blit(arrow_surf, (self.back_icon_rect.centerx - arrow_surf.get_width() // 2,
-                                         self.back_icon_rect.centery - arrow_surf.get_height() // 2))
+                                              self.back_icon_rect.centery - arrow_surf.get_height() // 2))
 
                 card_width, card_height = 110, 240
                 spacing = 15
@@ -209,11 +236,12 @@ class CustomizationScreen:
                 pygame.draw.rect(self.screen, (255, 255, 255), self.name_btn_rect, 2, border_radius=12)
                 btn_text = self.font_name.render("CLICK TO ENTER NAME", True, (0, 0, 0))
                 self.screen.blit(btn_text, (self.name_btn_rect.centerx - btn_text.get_width() // 2,
-                                       self.name_btn_rect.centery - btn_text.get_height() // 2))
+                                            self.name_btn_rect.centery - btn_text.get_height() // 2))
 
                 inst_bg = pygame.Rect(0, self.HEIGHT - 70, self.WIDTH, 60)
                 pygame.draw.rect(self.screen, (0, 0, 0), inst_bg)
-                inst_surf = self.font_instruction.render("◀ ▶ Select Character | Click Button or Press [ENTER]", True, self.TEXT_COLOR)
+                inst_surf = self.font_instruction.render("◀ ▶ Select Character | Click Button or Press [ENTER]", True,
+                                                         self.TEXT_COLOR)
                 self.screen.blit(inst_surf, (self.WIDTH // 2 - inst_surf.get_width() // 2, self.HEIGHT - 50))
 
             elif self.game_state == "ENTER_NAME":
@@ -231,12 +259,14 @@ class CustomizationScreen:
                 self.screen.blit(name_surf, (text_field_rect.x + 15, text_field_rect.y + 8))
                 self.save_btn_rect = pygame.Rect(box_x + 110, box_y + 140, box_width - 220, 45)
                 save_hovered = self.save_btn_rect.collidepoint(mouse_pos)
-                pygame.draw.rect(self.screen, (46, 139, 87) if save_hovered else (34, 102, 64), self.save_btn_rect, border_radius=10)
+                pygame.draw.rect(self.screen, (46, 139, 87) if save_hovered else (34, 102, 64), self.save_btn_rect,
+                                 border_radius=10)
                 pygame.draw.rect(self.screen, (255, 255, 255), self.save_btn_rect, 2, border_radius=10)
                 save_txt = self.font_name.render("SAVE & PLAY", True, self.TEXT_COLOR)
                 self.screen.blit(save_txt, (self.save_btn_rect.centerx - save_txt.get_width() // 2,
-                                       self.save_btn_rect.centery - save_txt.get_height() // 2))
-                sub_inst = self.font_instruction.render("[BACKSPACE] Delete | [ESC] Back to Selection", True, (200, 200, 200))
+                                            self.save_btn_rect.centery - save_txt.get_height() // 2))
+                sub_inst = self.font_instruction.render("[BACKSPACE] Delete | [ESC] Back to Selection", True,
+                                                        (200, 200, 200))
                 self.screen.blit(sub_inst, (box_x + box_width // 2 - sub_inst.get_width() // 2, box_y + 205))
 
             pygame.display.flip()
