@@ -2,6 +2,6 @@
     "selected_character": "eleven",
     "player_name": "ABC",
     "sound_volume": 5,
-    "music_muted": true,
-    "sound_muted": false
+    "music_muted": false,
+    "sound_muted": true
 }
